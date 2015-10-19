@@ -9,34 +9,48 @@ namespace EncodeFixer
 {
     class Program
     {
-        static Utf8Checker utf8Checker = new Utf8Checker();
-
         static void Main(string[] args)
         {
-            string dir;
+            string dir = null;
 
-            while (true)
+            if (args.Any())
             {
-                Console.WriteLine("Enter root dir for fix or 'abort' to exit:");
-                dir = Console.ReadLine();
-                if (dir == "abort")
+                foreach (var arg in args)
                 {
-                    return;
+                    if (!string.IsNullOrWhiteSpace(arg))
+                    {
+                        if (Directory.Exists(arg))
+                        {
+                            dir = arg;
+                        }
+                    }
                 }
-
-                if (string.IsNullOrEmpty(dir))
+            }
+            if (dir == null)
+            {
+                while (true)
                 {
-                    Console.WriteLine("Dir cannot be empty");
-                    continue;
-                }
+                    Console.WriteLine("Enter root dir for fix or 'abort' to exit:");
+                    dir = Console.ReadLine();
+                    if (dir == "abort")
+                    {
+                        return;
+                    }
 
-                if (!Directory.Exists(dir))
-                {
-                    Console.WriteLine("Dir not exist");
-                    continue;
-                }
+                    if (string.IsNullOrEmpty(dir))
+                    {
+                        Console.WriteLine("Dir cannot be empty");
+                        continue;
+                    }
 
-                break;
+                    if (!Directory.Exists(dir))
+                    {
+                        Console.WriteLine("Dir not exist");
+                        continue;
+                    }
+
+                    break;
+                }
             }
 
             DirSearch(dir);
@@ -67,12 +81,35 @@ namespace EncodeFixer
         {
             foreach (string f in Directory.GetFiles(d).Where(f => Path.GetExtension(f) == ".cs" || Path.GetExtension(f) == ".xaml"))
             {
-                if (!utf8Checker.Check(f))
+                Encoding encoding;
+
+                using (var fs = File.OpenRead(f))
                 {
-                    Console.Out.WriteLine(f);
-                    var text = File.ReadAllText(f, Encoding.GetEncoding(1251));
-                    File.WriteAllText(f, text, Encoding.UTF8);
+                    Ude.CharsetDetector cdet = new Ude.CharsetDetector();
+                    cdet.Feed(fs);
+                    cdet.DataEnd();
+                    if (cdet.Charset == null)
+                    {
+                        Console.WriteLine($"{f} - Detection failed.");
+                        continue;
+                    }
+
+                    switch (cdet.Charset)
+                    {
+                        case "UTF-8":
+                            continue;
+                        case "windows-1251":
+                            encoding = Encoding.GetEncoding(1251);
+                            break;
+                        default:
+                            Console.Out.WriteLine($"{cdet.Charset} - {f} - Skipped");
+                            continue;
+                    }
                 }
+
+                Console.Out.WriteLine(f);
+                var text = File.ReadAllText(f, encoding);
+                File.WriteAllText(f, text, Encoding.UTF8);
             }
         }
     }
