@@ -90,14 +90,16 @@ namespace EncodeFixer
                     cdet.DataEnd();
                     if (cdet.Charset == null)
                     {
-                        Console.WriteLine($"{f} - Detection failed.");
+//                        Console.WriteLine($"{f} - Detection failed.");
                         continue;
                     }
 
                     switch (cdet.Charset)
                     {
+                        case "ASCII":
                         case "UTF-8":
                             continue;
+                        case "x-mac-cyrillic":
                         case "windows-1251":
                             encoding = Encoding.GetEncoding(1251);
                             break;
@@ -107,7 +109,7 @@ namespace EncodeFixer
                     }
                 }
 
-                Console.Out.WriteLine(f);
+//                Console.Out.WriteLine(f);
                 var text = File.ReadAllText(f, encoding);
                 File.WriteAllText(f, text, Encoding.UTF8);
             }
